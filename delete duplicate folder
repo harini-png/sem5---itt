@@ -1,0 +1,242 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+#define HASH_SIZE 65536
+
+// Trie Node definition
+typedef struct TrieNode {
+    char name[12];
+    struct TrieNode** children;
+    int child_count;
+    int child_capacity;
+    bool deleted;
+} TrieNode;
+
+// Hash entry structure for tracking duplicate serializations
+typedef struct HashEntry {
+    char* str;
+    int count;
+    struct HashEntry* next;
+} HashEntry;
+
+HashEntry* hash_table[HASH_SIZE];
+
+// Simple polynomial rolling hash function for strings
+unsigned int get_hash(const char* str) {
+    unsigned int hash = 5381;
+    while (*str) {
+        hash = ((hash << 5) + hash) + *str++;
+    }
+    return hash % HASH_SIZE;
+}
+
+// Check or increment count of a serialization pattern in the hash map
+int add_to_hash(const char* str) {
+    unsigned int slot = get_hash(str);
+    HashEntry* entry = hash_table[slot];
+    while (entry != NULL) {
+        if (strcmp(entry->str, str) == 0) {
+            entry->count++;
+            return entry->count;
+        }
+        entry = entry->next;
+    }
+    HashEntry* new_entry = (HashEntry*)malloc(sizeof(HashEntry));
+    new_entry->str = strdup(str);
+    new_entry->count = 1;
+    new_entry->next = hash_table[slot];
+    hash_table[slot] = new_entry;
+    return 1;
+}
+
+// Create a new Trie Node
+TrieNode* create_node(const char* name) {
+    TrieNode* node = (TrieNode*)malloc(sizeof(TrieNode));
+    strcpy(node->name, name);
+    node->child_count = 0;
+    node->child_capacity = 4;
+    node->children = (TrieNode**)malloc(node->child_capacity * sizeof(TrieNode*));
+    node->deleted = false;
+    return node;
+}
+
+// Comparator function for sorting child nodes alphabetically
+int compare_nodes(const void* a, const void* b) {
+    return strcmp((*(TrieNode**)a)->name, (*(TrieNode**)b)->name);
+}
+
+// Insert a path list into the Trie structure
+void insert_path(TrieNode* root, char** path, int path_len) {
+    TrieNode* curr = root;
+    for (int i = 0; i < path_len; i++) {
+        char* token = path[i];
+        int found_idx = -1;
+        for (int j = 0; j < curr->child_count; j++) {
+            if (strcmp(curr->children[j]->name, token) == 0) {
+                found_idx = j;
+                break;
+            }
+        }
+        if (found_idx == -1) {
+            if (curr->child_count >= curr->child_capacity) {
+                curr->child_capacity *= 2;
+                curr->children = (TrieNode**)realloc(curr->children, curr->child_capacity * sizeof(TrieNode*));
+            }
+            TrieNode* new_child = create_node(token);
+            curr->children[curr->child_count++] = new_child;
+            curr = new_child;
+        } else {
+            curr = curr->children[found_idx];
+        }
+    }
+}
+
+// Post-order serialization and marking of duplicate subtrees
+char* serialize_and_mark(TrieNode* node) {
+    if (node->child_count == 0) {
+        return strdup("");
+    }
+
+    // Sort children alphabetically to ensure structure shapes match uniformly
+    qsort(node->children, node->child_count, sizeof(TrieNode*), compare_nodes);
+
+    int buf_cap = 256;
+    int buf_len = 0;
+    char* buffer = (char*)malloc(buf_cap);
+    buffer[0] = '\0';
+
+    for (int i = 0; i < node->child_count; i++) {
+        char* child_sub_serial = serialize_and_mark(node->children[i]);
+        int required = strlen(node->children[i]->name) + strlen(child_sub_serial) + 4; 
+        if (buf_len + required >= buf_cap) {
+            buf_cap = (buf_len + required) * 2;
+            buffer = (char*)realloc(buffer, buf_cap);
+        }
+        buf_len += sprintf(buffer + buf_len, "(%s%s)", node->children[i]->name, child_sub_serial);
+        free(child_sub_serial);
+    }
+
+    add_to_hash(buffer);
+    return buffer;
+}
+
+// Second pass post-order: flag nodes for deletion based on their pattern occurrences
+void flag_deletions(TrieNode* node) {
+    if (node->child_count == 0) return;
+
+    int buf_cap = 256;
+    int buf_len = 0;
+    char* buffer = (char*)malloc(buf_cap);
+    buffer[0] = '\0';
+
+    for (int i = 0; i < node->child_count; i++) {
+        flag_deletions(node->children[i]);
+        
+        char* child_sub_serial = serialize_and_mark(node->children[i]); 
+        int required = strlen(node->children[i]->name) + strlen(child_sub_serial) + 4;
+        if (buf_len + required >= buf_cap) {
+            buf_cap = (buf_len + required) * 2;
+            buffer = (char*)realloc(buffer, buf_cap);
+        }
+        buf_len += sprintf(buffer + buf_len, "(%s%s)", node->children[i]->name, child_sub_serial);
+        free(child_sub_serial);
+    }
+
+    unsigned int slot = get_hash(buffer);
+    HashEntry* entry = hash_table[slot];
+    while (entry != NULL) {
+        if (strcmp(entry->str, buffer) == 0) {
+            if (entry->count > 1) {
+                node->deleted = true; 
+            }
+            break;
+        }
+        entry = entry->next;
+    }
+    free(buffer);
+}
+
+char*** final_ans;
+int ans_count;
+int ans_capacity;
+
+// Pre-order traversal to gather remaining paths
+void collect_paths(TrieNode* node, char** current_path, int depth) {
+    if (node->deleted) return;
+
+    if (depth > 0) {
+        if (ans_count >= ans_capacity) {
+            ans_capacity *= 2;
+            final_ans = (char***)realloc(final_ans, ans_capacity * sizeof(char**));
+        }
+        char** saved_path = (char**)malloc((depth + 1) * sizeof(char*));
+        for (int i = 0; i < depth; i++) {
+            saved_path[i] = strdup(current_path[i]);
+        }
+        saved_path[depth] = NULL; 
+        final_ans[ans_count++] = saved_path;
+    }
+
+    for (int i = 0; i < node->child_count; i++) {
+        current_path[depth] = node->children[i]->name;
+        collect_paths(node->children[i], current_path, depth + 1);
+    }
+}
+
+void free_trie(TrieNode* node) {
+    for (int i = 0; i < node->child_count; i++) {
+        free_trie(node->children[i]);
+    }
+    free(node->children);
+    free(node);
+}
+
+// Master environment interface function
+char*** deleteDuplicateFolder(char*** paths, int pathsSize, int* pathsColSize, int* returnSize, int** returnColumnSizes) {
+    memset(hash_table, 0, sizeof(hash_table));
+
+    TrieNode* root = create_node("/");
+
+    for (int i = 0; i < pathsSize; i++) {
+        insert_path(root, paths[i], pathsColSize[i]);
+    }
+
+    char* root_serial = serialize_and_mark(root);
+    free(root_serial);
+
+    flag_deletions(root);
+
+    ans_count = 0;
+    ans_capacity = 100;
+    final_ans = (char***)malloc(ans_capacity * sizeof(char**));
+    
+    // Fixed: Track stack path safely up to maximum depth constraints
+    char* current_path[505]; 
+
+    collect_paths(root, current_path, 0);
+
+    *returnSize = ans_count;
+    *returnColumnSizes = (int*)malloc(ans_count * sizeof(int));
+    for (int i = 0; i < ans_count; i++) {
+        int len = 0;
+        while (final_ans[i][len] != NULL) {
+            len++;
+        }
+        (*returnColumnSizes)[i] = len;
+    }
+
+    free_trie(root);
+    for (int i = 0; i < HASH_SIZE; i++) {
+        HashEntry* entry = hash_table[i];
+        while (entry != NULL) {
+            HashEntry* tmp = entry;
+            entry = entry->next;
+            free(tmp->str);
+            free(tmp);
+        }
+    }
+
+    return final_ans;
+}
