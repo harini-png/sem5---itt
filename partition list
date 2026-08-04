@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+/**
+ * Definition for singly-linked list.
+ * struct ListNode {
+ *     int val;
+ *     struct ListNode *next;
+ * };
+ */
+struct ListNode* partition(struct ListNode* head, int x) {
+   
+    struct ListNode lessHead;
+    struct ListNode greaterHead;
+    
+    // Tail pointers to track the end of both partitions
+    struct ListNode* lessTail = &lessHead;
+    struct ListNode* greaterTail = &greaterHead;
+    
+    // Initialize dummy links
+    lessHead.next = NULL;
+    greaterHead.next = NULL;
+    
+    struct ListNode* curr = head;
+
+    while (curr != NULL) {
+        if (curr->val < x) {
+            lessTail->next = curr;
+            lessTail = lessTail->next;
+        } else {
+            greaterTail->next = curr;
+            greaterTail = greaterTail->next;
+        }
+        curr = curr->next;
+    }
+    
+
+    greaterTail->next = NULL;
+    
+ 
+    lessTail->next = greaterHead.next;
+    
+    // Return the head of the newly partitioned list
+    return lessHead.next;
+}
