@@ -1,0 +1,86 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+// Helper function to check if two words differ by exactly one character
+bool isOneLetterDiff(const char* word1, const char* word2, int len) {
+    int diff_count = 0;
+    for (int i = 0; i < len; i++) {
+        if (word1[i] != word2[i]) {
+            diff_count++;
+            if (diff_count > 1) return false; // Early exit if differences exceed 1
+        }
+    }
+    return diff_count == 1;
+}
+
+int ladderLength(char* beginWord, char* endWord, char** wordList, int wordListSize) {
+    int word_len = strlen(beginWord);
+    
+    // Step 1: Find the target word in the list to make sure it exists
+    int end_idx = -1;
+    for (int i = 0; i < wordListSize; i++) {
+        if (strcmp(wordList[i], endWord) == 0) {
+            end_idx = i;
+            break;
+        }
+    }
+    // If endWord is not in wordList, no transformation sequence is possible
+    if (end_idx == -1) return 0;
+
+    // Step 2: Set up the BFS Queue 
+    // The queue will hold the indices of the words in wordList.
+    // We allocate a maximum size of wordListSize + 1 (for the beginWord)
+    int* queue = (int*)malloc((wordListSize + 1) * sizeof(int));
+    int head = 0, tail = 0;
+
+    // Array to track if a word from wordList has been visited
+    bool* visited = (bool*)calloc(wordListSize, sizeof(bool));
+
+    // Step 3: Seed the BFS with words directly reachable from beginWord
+    int level = 1;
+    for (int i = 0; i < wordListSize; i++) {
+        if (isOneLetterDiff(beginWord, wordList[i], word_len)) {
+            if (i == end_idx) {
+                free(queue);
+                free(visited);
+                return level + 1; // Direct match found immediately
+            }
+            queue[tail++] = i;
+            visited[i] = true;
+        }
+    }
+    level++;
+
+    // Step 4: Process BFS level by level
+    while (head < tail) {
+        int current_level_size = tail - head; // Number of nodes at the current depth level
+
+        for (int k = 0; k < current_level_size; k++) {
+            int curr_word_idx = queue[head++];
+            char* curr_word = wordList[curr_word_idx];
+
+            // If we have reached the endWord, return the tracked depth
+            if (curr_word_idx == end_idx) {
+                free(queue);
+                free(visited);
+                return level;
+            }
+
+            // Find all unvisited neighbors of the current word
+            for (int i = 0; i < wordListSize; i++) {
+                if (!visited[i] && isOneLetterDiff(curr_word, wordList[i], word_len)) {
+                    queue[tail++] = i;
+                    visited[i] = true;
+                }
+            }
+        }
+        level++; // Increment transformation sequence count after finishing a level
+    }
+
+    // Clean up memory if no sequence is found
+    free(queue);
+    free(visited);
+    return 0;
+}
