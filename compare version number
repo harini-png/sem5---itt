@@ -1,0 +1,37 @@
+#include <stdio.h>
+#include <string.h>
+
+int compareVersion(char* version1, char* version2) {
+    int i = 0, j = 0;
+    int len1 = strlen(version1);
+    int len2 = strlen(version2);
+
+    // Loop until both strings are fully processed
+    while (i < len1 || j < len2) {
+        int val1 = 0;
+        int val2 = 0;
+
+        // Parse the current revision integer for version1
+        while (i < len1 && version1[i] != '.') {
+            val1 = val1 * 10 + (version1[i] - '0');
+            i++;
+        }
+
+        // Parse the current revision integer for version2
+        while (j < len2 && version2[j] != '.') {
+            val2 = val2 * 10 + (version2[j] - '0');
+            j++;
+        }
+
+        // Compare the two revision values
+        if (val1 < val2) return -1;
+        if (val1 > val2) return 1;
+
+        // Skip the dot '.' character to move to the next revision segment
+        if (i < len1) i++;
+        if (j < len2) j++;
+    }
+
+    // Both versions are structurally equivalent
+    return 0;
+}
