@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+
+// Define the structural layout of a single Trie Node
+typedef struct TrieNode {
+    struct TrieNode* children[26];
+    bool is_end_of_word;
+} Trie;
+
+// Helper function to create and allocate a new Trie Node
+Trie* trieCreate() {
+    Trie* node = (Trie*)malloc(sizeof(Trie));
+    if (node) {
+        node->is_end_of_word = false;
+        for (int i = 0; i < 26; i++) {
+            node->children[i] = NULL;
+        }
+    }
+    return node;
+}
+
+// Inserts a string word into the trie
+void trieInsert(Trie* obj, char* word) {
+    if (!obj || !word) return;
+    
+    Trie* current = obj;
+    for (int i = 0; word[i] != '\0'; i++) {
+        int index = word[i] - 'a'; // Map character 'a'-'z' to 0-25
+        
+        if (current->children[index] == NULL) {
+            current->children[index] = trieCreate();
+        }
+        current = current->children[index];
+    }
+    current->is_end_of_word = true; // Mark structural completion of word
+}
+
+// Returns true if the string word is in the trie, and false otherwise
+bool trieSearch(Trie* obj, char* word) {
+    if (!obj || !word) return false;
+    
+    Trie* current = obj;
+    for (int i = 0; word[i] != '\0'; i++) {
+        int index = word[i] - 'a';
+        
+        if (current->children[index] == NULL) {
+            return false; // Character missing means word does not exist
+        }
+        current = current->children[index];
+    }
+    return current->is_end_of_word;
+}
+
+// Returns true if there is a previously inserted string word that has the prefix prefix, and false otherwise
+bool trieStartsWith(Trie* obj, char* prefix) {
+    if (!obj || !prefix) return false;
+    
+    Trie* current = obj;
+    for (int i = 0; prefix[i] != '\0'; i++) {
+        int index = prefix[i] - 'a';
+        
+        if (current->children[index] == NULL) {
+            return false; // Prefix link broken
+        }
+        current = current->children[index];
+    }
+    return true; // Reached the end of prefix successfully
+}
+
+// Helper function to free structural memory blocks recursively
+void trieFree(Trie* obj) {
+    if (!obj) return;
+    
+    for (int i = 0; i < 26; i++) {
+        if (obj->children[i] != NULL) {
+            trieFree(obj->children[i]);
+        }
+    }
+    free(obj);
+}
