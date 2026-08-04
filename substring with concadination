@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+// Simple hash map entry structure for string counting
+typedef struct {
+    char key[32]; // Accommodates word length up to 30 + '\0'
+    int val;
+} HashEntry;
+
+// Simple hash function using polynomial rolling
+unsigned int get_hash(const char* str, int table_size) {
+    unsigned int hash = 0;
+    while (*str) {
+        hash = (hash * 31) + *str++;
+    }
+    return hash % table_size;
+}
+
+// Clear all active values inside our table
+void clear_table(HashEntry* table, int table_size) {
+    for (int i = 0; i < table_size; i++) {
+        table[i].key[0] = '\0';
+        table[i].val = 0;
+    }
+}
+
+// Helper to update or find frequency in our custom hash table
+int get_or_set(HashEntry* table, int table_size, const char* word, int delta, bool find_only) {
+    unsigned int idx = get_hash(word, table_size);
+    while (table[idx].key[0] != '\0') {
+        if (strcmp(table[idx].key, word) == 0) {
+            if (!find_only) table[idx].val += delta;
+            return table[idx].val;
+        }
+        idx = (idx + 1) % table_size;
+    }
+    if (!find_only && delta != 0) {
+        strcpy(table[idx].key, word);
+        table[idx].val = delta;
+        return table[idx].val;
+    }
+    return 0;
+}
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+int* findSubstring(char* s, char** words, int wordsSize, int* returnSize) {
+    *returnSize = 0;
+    if (!s || wordsSize == 0) return NULL;
+
+    int s_len = strlen(s);
+    int word_len = strlen(words[0]); // Fixed syntax error from words to words[0]
+    int total_words_len = wordsSize * word_len;
+
+    if (s_len < total_words_len) return NULL;
+
+    // Allocate response array dynamically
+    int* result = (int*)malloc(s_len * sizeof(int));
+    
+    // Hash map size safely larger than wordsSize to lower collisions
+    int table_size = wordsSize * 2 + 7;
+    HashEntry* word_counts = (HashEntry*)calloc(table_size, sizeof(HashEntry));
+    HashEntry* window_counts = (HashEntry*)calloc(table_size, sizeof(HashEntry));
+
+    // Populate initial expected word counts
+    for (int i = 0; i < wordsSize; i++) {
+        get_or_set(word_counts, table_size, words[i], 1, false);
+    }
+
+    // Single static buffers to avoid dynamic allocation in loops
+    char current_word[32] = {0};
+    char left_word[32] = {0};
+
+    // Slide window starting from every possible remainder index offset
+    for (int i = 0; i < word_len; i++) {
+        int left = i;
+        int count = 0;
+        clear_table(window_counts, table_size);
+
+        for (int right = i; right + word_len <= s_len; right += word_len) {
+            // Extract the word at the right pointer
+            strncpy(current_word, s + right, word_len);
+            current_word[word_len] = '\0';
+            
+            // Check if it's a valid word from our library
+            int expected = get_or_set(word_counts, table_size, current_word, 0, true);
+            if (expected > 0) {
+                int curr_count = get_or_set(window_counts, table_size, current_word, 1, false);
+                count++;
+
+                // If we have more duplicates than allowed, shrink left until it's valid
+                while (curr_count > expected) {
+                    strncpy(left_word, s + left, word_len);
+                    left_word[word_len] = '\0';
+                    
+                    curr_count = get_or_set(window_counts, table_size, left_word, -1, false);
+                    count--;
+                    left += word_len;
+                }
+
+                // Window exactly matches all string constraints
+                if (count == wordsSize) {
+                    result[(*returnSize)++] = left;
+                }
+            } else {
+                // Invalid word encountered; reset sliding window boundaries entirely
+                clear_table(window_counts, table_size);
+                count = 0;
+                left = right + word_len;
+            }
+        }
+    }
+
+    free(window_counts);
+    free(word_counts);
+    return result;
+}
