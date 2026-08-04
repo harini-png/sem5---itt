@@ -1,0 +1,50 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+int* findAnagrams(char* s, char* p, int* returnSize) {
+    *returnSize = 0;
+    if (!s || !p) return NULL;
+    int s_len = strlen(s);
+    int p_len = strlen(p);
+    if (s_len < p_len) return NULL;
+    int* result = (int*)malloc(s_len * sizeof(int));
+    if (!result) return NULL;
+    int p_counts[26] = {0};
+    int window_counts[26] = {0};
+    for (int i = 0; i < p_len; i++) {
+        p_counts[p[(unsigned char)i] - 'a']++;
+        window_counts[s[(unsigned char)i] - 'a']++;
+    }
+    bool match = true;
+    for (int i = 0; i < 26; i++) {
+        if (p_counts[i] != window_counts[i]) {
+            match = false;
+            break;
+        }
+    }
+    if (match) {
+        result[(*returnSize)++] = 0;
+    }
+
+
+    for (int i = p_len; i < s_len; i++) {
+        window_counts[s[i] - 'a']++;
+
+        window_counts[s[i - p_len] - 'a']--;
+
+        match = true;
+        for (int j = 0; j < 26; j++) {
+            if (p_counts[j] != window_counts[j]) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) {
+            result[(*returnSize)++] = i - p_len + 1;
+        }
+    }
+
+    return result;
+}
