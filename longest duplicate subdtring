@@ -1,0 +1,101 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+#define PRIME_BASE 31
+#define MODULO 1000000007
+
+typedef struct {
+    int index;
+    int next;
+} HashNode;
+
+bool verifyMatch(const char* s, int idx1, int idx2, int len) {
+    for (int i = 0; i < len; i++) {
+        if (s[idx1 + i] != s[idx2 + i]) return false;
+    }
+    return true;
+}
+int searchLength(const char* s, int n, int len, HashNode* nodes, int* head, int table_size) {
+    if (len <= 0 || len >= n) return -1;
+    for (int i = 0; i < table_size; i++) {
+        head[i] = -1;
+    }
+
+    long long current_hash = 0;
+    long long highest_power = 1;
+    for (int i = 0; i < len; i++) {
+        current_hash = (current_hash * PRIME_BASE + (s[i] - 'a')) % MODULO;
+        if (i < len - 1) {
+            highest_power = (highest_power * PRIME_BASE) % MODULO;
+        }
+    }
+    int bucket = (int)(current_hash % table_size);
+    if (bucket < 0) bucket += table_size;
+    
+    nodes[0].index = 0;
+    nodes[0].next = head[bucket];
+    head[bucket] = 0;
+    for (int i = 1; i <= n - len; i++) {
+        current_hash = (current_hash - (s[i - 1] - 'a') * highest_power) % MODULO;
+        if (current_hash < 0) current_hash += MODULO;
+        current_hash = (current_hash * PRIME_BASE + (s[i + len - 1] - 'a')) % MODULO;
+
+        bucket = (int)(current_hash % table_size);
+        if (bucket < 0) bucket += table_size;
+        int current_node_idx = head[bucket];
+        while (current_node_idx != -1) {
+            if (verifyMatch(s, nodes[current_node_idx].index, i, len)) {
+                return i; // Found duplicate substring start position
+            }
+            current_node_idx = nodes[current_node_idx].next;
+        }
+
+        // Insert current window node into the chain
+        nodes[i].index = i;
+        nodes[i].next = head[bucket];
+        head[bucket] = i;
+    }
+
+    return -1; // No duplicate found
+}
+
+char* longestDupSubstring(char* s) {
+    if (!s) return "";
+    int n = strlen(s);
+    if (n < 2) return "";
+    int table_size = 30011; 
+    HashNode* nodes = (HashNode*)malloc((n + 1) * sizeof(HashNode));
+    int* head = (int*)malloc(table_size * sizeof(int));
+
+    int low = 1, high = n - 1;
+    int best_start = -1;
+    int max_len = 0;
+
+    // Binary search loop
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        int start_idx = searchLength(s, n, mid, nodes, head, table_size);
+
+        if (start_idx != -1) {
+            best_start = start_idx;
+            max_len = mid;
+            low = mid + 1; // Try to look for longer matches
+        } else {
+            high = mid - 1; // Shrink search window length
+        }
+    }
+
+    free(nodes);
+    free(head);
+
+    if (max_len == 0 || best_start == -1) {
+        return "";
+    }
+    char* result = (char*)malloc((max_len + 1) * sizeof(char));
+    memcpy(result, s + best_start, max_len);
+    result[max_len] = '\0';
+
+    return result;
+}
