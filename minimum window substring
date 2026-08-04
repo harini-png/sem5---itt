@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+
+char* minWindow(char* s, char* t) {
+    if (!s || !t) return "";
+
+    int s_len = strlen(s);
+    int t_len = strlen(t);
+    if (s_len < t_len) return "";
+
+    // Frequency arrays for ASCII characters
+    int target_counts[128] = {0};
+    int window_counts[128] = {0};
+
+    // Populate target frequencies from string t
+    for (int i = 0; i < t_len; i++) {
+        target_counts[(unsigned char)t[i]]++;
+    }
+
+    int required_unique = 0;
+    for (int i = 0; i < 128; i++) {
+        if (target_counts[i] > 0) {
+            required_unique++;
+        }
+    }
+
+    int left = 0, right = 0;
+    int formed_unique = 0;
+
+    // Track the absolute minimum window specifications
+    int min_len = INT_MAX;
+    int min_left = 0;
+
+    // Slide the right pointer over string s
+    while (right < s_len) {
+        char r_char = s[right];
+        window_counts[(unsigned char)r_char]++;
+
+        // If the character matches the target frequency requirement, count it
+        if (target_counts[(unsigned char)r_char] > 0 && 
+            window_counts[(unsigned char)r_char] == target_counts[(unsigned char)r_char]) {
+            formed_unique++;
+        }
+
+        // Try to contract the window from the left once all characters are found
+        while (left <= right && formed_unique == required_unique) {
+            char l_char = s[left];
+
+            // Update the minimum window if a smaller one is found
+            int current_window_len = right - left + 1;
+            if (current_window_len < min_len) {
+                min_len = current_window_len;
+                min_left = left;
+            }
+
+            // Remove the left character from the window tracking
+            window_counts[(unsigned char)l_char]--;
+            if (target_counts[(unsigned char)l_char] > 0 && 
+                window_counts[(unsigned char)l_char] < target_counts[(unsigned char)l_char]) {
+                formed_unique--;
+            }
+
+            left++; // Shrink window
+        }
+
+        right++; // Expand window
+    }
+
+    // If no valid window was found, return an empty string
+    if (min_len == INT_MAX) {
+        return "";
+    }
+
+    // Allocate memory for the final output substring (+1 for null terminator)
+    char* result = (char*)malloc((min_len + 1) * sizeof(char));
+    strncpy(result, s + min_left, min_len);
+    result[min_len] = '\0';
+
+    return result;
+}
