@@ -1,0 +1,47 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+
+bool checkInclusion(char* s1, char* s2) {
+    int len1 = strlen(s1);
+    int len2 = strlen(s2);
+
+  
+    if (len1 > len2) return false;
+
+    int s1_counts[26] = {0};
+    int s2_counts[26] = {0};
+
+   
+    for (int i = 0; i < len1; i++) {
+        s1_counts[s1[i] - 'a']++;
+        s2_counts[s2[i] - 'a']++;
+    }
+    int matches = 0;
+    for (int i = 0; i < 26; i++) {
+        if (s1_counts[i] == s2_counts[i]) {
+            matches++;
+        }
+    }
+
+    for (int i = len1; i < len2; i++) {
+      
+        if (matches == 26) return true;
+        int r_idx = s2[i] - 'a';
+        s2_counts[r_idx]++;
+        if (s2_counts[r_idx] == s1_counts[r_idx]) {
+            matches++; // It now matches the requirement
+        } else if (s2_counts[r_idx] == s1_counts[r_idx] + 1) {
+         
+        }
+
+        int l_idx = s2[i - len1] - 'a';
+        s2_counts[l_idx]--;
+        if (s2_counts[l_idx] == s1_counts[l_idx]) {
+      
+        } else if (s2_counts[l_idx] == s1_counts[l_idx] - 1) {
+     
+        }
+    }
+    return matches == 26;
+}
