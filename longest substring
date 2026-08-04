@@ -1,0 +1,33 @@
+#include <stdio.h>
+#include <string.h>
+
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+
+int longestSubstringHelper(char* s, int start, int end, int k) {
+    if (end - start < k) return 0;
+
+    int counts[26] = {0};
+    for (int i = start; i < end; i++) {
+        counts[s[i] - 'a']++;
+    }
+
+    for (int i = start; i < end; i++) {
+        if (counts[s[i] - 'a'] < k) {
+        
+            int left_res = longestSubstringHelper(s, start, i, k);
+            while (i < end && counts[s[i] - 'a'] < k) {
+                i++;
+            int right_res = longestSubstringHelper(s, i, end, k);
+            
+            return MAX(left_res, right_res);
+        }
+    }
+    return end - start;
+}
+
+int longestSubstring(char* s, int k) {
+    if (!s || k <= 0) return 0;
+    return longestSubstringHelper(s, 0, strlen(s), k);
+}
