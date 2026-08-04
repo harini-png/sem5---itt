@@ -1,0 +1,38 @@
+#include <stdio.h>
+#include <stdbool.h>
+
+void setZeroes(int** matrix, int matrixSize, int* matrixColSize) {
+    int rows = matrixSize;
+    int cols = matrixColSize[0];
+    bool first_col_has_zero = false;
+
+    // Step 1: Scan the matrix and use the first row & column as trackers
+    for (int i = 0; i < rows; i++) {
+        // Check if the first column itself has any zero
+        if (matrix[i][0] == 0) {
+            first_col_has_zero = true;
+        }
+        
+        // Scan the rest of the columns
+        for (int j = 1; j < cols; j++) {
+            if (matrix[i][j] == 0) {
+                matrix[i][0] = 0; // Mark the row header
+                matrix[0][j] = 0; // Mark the column header
+            }
+        }
+    }
+
+    // Step 2: Iterate backwards to update cells using the headers
+    // (We go backwards to avoid overwriting header flags prematurely)
+    for (int i = rows - 1; i >= 0; i--) {
+        for (int j = cols - 1; j > 0; j--) {
+            if (matrix[i][0] == 0 || matrix[0][j] == 0) {
+                matrix[i][j] = 0;
+            }
+        }
+        // Update the first column cell after processing its row cells
+        if (first_col_has_zero) {
+            matrix[i][0] = 0;
+        }
+    }
+}
