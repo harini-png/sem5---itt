@@ -1,0 +1,56 @@
+#include <stdbool.h>
+#include <string.h>
+
+bool backspaceCompare(char* s, char* t) {
+    int i = strlen(s) - 1;
+    int j = strlen(t) - 1;
+    
+    int skipS = 0; // Tracks active backspaces for string s
+    int skipT = 0; // Tracks active backspaces for string t
+
+    while (i >= 0 || j >= 0) {
+        // Step 1: Find the next valid character in string s
+        while (i >= 0) {
+            if (s[i] == '#') {
+                skipS++;
+                i--;
+            } else if (skipS > 0) {
+                skipS--;
+                i--;
+            } else {
+                break; // Valid character found
+            }
+        }
+
+        // Step 2: Find the next valid character in string t
+        while (j >= 0) {
+            if (t[j] == '#') {
+                skipT++;
+                j--;
+            } else if (skipT > 0) {
+                skipT--;
+                j--;
+            } else {
+                break; // Valid character found
+            }
+        }
+
+        // Step 3: Compare the two valid characters
+        if (i >= 0 && j >= 0) {
+            if (s[i] != t[j]) {
+                return false; // Mismatch found
+            }
+        } else {
+            // If one string has a character left and the other is empty
+            if ((i >= 0) != (j >= 0)) {
+                return false;
+            }
+        }
+
+        // Move to the next characters
+        i--;
+        j--;
+    }
+
+    return true;
+}
