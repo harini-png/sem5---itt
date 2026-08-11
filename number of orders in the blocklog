@@ -1,0 +1,150 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MOD 1000000007
+
+// Structure to represent an item in our heaps
+typedef struct {
+    int price;
+    int amount;
+} OrderNode;
+
+// Structure for a priority queue (Heap)
+typedef struct {
+    OrderNode* data;
+    int size;
+    int capacity;
+    int isMaxHeap; // 1 for Max-Heap (Buy), 0 for Min-Heap (Sell)
+} PriorityQueue;
+
+// Helper to initialize a priority queue
+PriorityQueue* createPQ(int capacity, int isMaxHeap) {
+    PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
+    pq->data = (OrderNode*)malloc(capacity * sizeof(OrderNode));
+    pq->size = 0;
+    pq->capacity = capacity;
+    pq->isMaxHeap = isMaxHeap;
+    return pq;
+}
+
+// Compare function based on heap type
+int compare(PriorityQueue* pq, OrderNode a, OrderNode b) {
+    if (pq->isMaxHeap) {
+        return a.price > b.price; // Max-heap: Higher price has priority
+    } else {
+        return a.price < b.price; // Min-heap: Lower price has priority
+    }
+}
+
+// Swap helper
+void swap(OrderNode* a, OrderNode* b) {
+    OrderNode temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// Push an item into the priority queue
+void push(PriorityQueue* pq, int price, int amount) {
+    pq->data[pq->size].price = price;
+    pq->data[pq->size].amount = amount;
+    int i = pq->size;
+    pq->size++;
+    
+    // Bubble up
+    while (i > 0) {
+        int parent = (i - 1) / 2;
+        if (compare(pq, pq->data[i], pq->data[parent])) {
+            swap(&pq->data[i], &pq->data[parent]);
+            i = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+// Pop the top item from the priority queue
+void pop(PriorityQueue* pq) {
+    if (pq->size == 0) return;
+    pq->size--;
+    pq->data[0] = pq->data[pq->size];
+    
+    int i = 0;
+    // Bubble down
+    while (2 * i + 1 < pq->size) {
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        int target = left;
+        
+        if (right < pq->size && compare(pq, pq->data[right], pq->data[left])) {
+            target = right;
+        }
+        
+        if (compare(pq, pq->data[target], pq->data[i])) {
+            swap(&pq->data[i], &pq->data[target]);
+            i = target;
+        } else {
+            break;
+        }
+    }
+}
+
+int getNumberOfBacklogOrders(int** orders, int ordersSize, int* ordersColSize) {
+    // In the worst case, all orders could be added to the backlog
+    PriorityQueue* buyPQ = createPQ(ordersSize, 1);
+    PriorityQueue* sellPQ = createPQ(ordersSize, 0);
+    
+    for (int i = 0; i < ordersSize; i++) {
+        int price = orders[i][0];
+        int amount = orders[i][1];
+        int type = orders[i][2]; // 0 = Buy, 1 = Sell
+        
+        if (type == 0) { // Current order is a BUY order
+            // Try to match with the lowest priced SELL orders
+            while (amount > 0 && sellPQ->size > 0 && sellPQ->data[0].price <= price) {
+                if (sellPQ->data[0].amount <= amount) {
+                    amount -= sellPQ->data[0].amount;
+                    pop(sellPQ);
+                } else {
+                    sellPQ->data[0].amount -= amount;
+                    amount = 0;
+                }
+            }
+            // If there's still amount left, add it to the BUY backlog
+            if (amount > 0) {
+                push(buyPQ, price, amount);
+            }
+        } else { // Current order is a SELL order
+            // Try to match with the highest priced BUY orders
+            while (amount > 0 && buyPQ->size > 0 && buyPQ->data[0].price >= price) {
+                if (buyPQ->data[0].amount <= amount) {
+                    amount -= buyPQ->data[0].amount;
+                    pop(buyPQ);
+                } else {
+                    buyPQ->data[0].amount -= amount;
+                    amount = 0;
+                }
+            }
+            // If there's still amount left, add it to the SELL backlog
+            if (amount > 0) {
+                push(sellPQ, price, amount);
+            }
+        }
+    }
+    
+    // Count the remaining items in both backlogs
+    long long totalBacklog = 0;
+    for (int i = 0; i < buyPQ->size; i++) {
+        totalBacklog = (totalBacklog + buyPQ->data[i].amount) % MOD;
+    }
+    for (int i = 0; i < sellPQ->size; i++) {
+        totalBacklog = (totalBacklog + sellPQ->data[i].amount) % MOD;
+    }
+    
+    // Clean up memory
+    free(buyPQ->data);
+    free(buyPQ);
+    free(sellPQ->data);
+    free(sellPQ);
+    
+    return (int)totalBacklog;
+}
