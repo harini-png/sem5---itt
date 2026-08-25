@@ -1,0 +1,46 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+
+struct ListNode* reverseList(struct ListNode* head) {
+    struct ListNode* prev = NULL;
+    struct ListNode* curr = head;
+    struct ListNode* next = NULL;
+    
+    while (curr != NULL) {
+        next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+    return prev;
+}
+
+void reorderList(struct ListNode* head) {
+
+    if (head == NULL || head->next == NULL) {
+        return;
+    }
+    struct ListNode* slow = head;
+    struct ListNode* fast = head;
+    
+    while (fast->next != NULL && fast->next->next != NULL) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    struct ListNode* secondHalf = slow->next;
+    slow->next = NULL; 
+    secondHalf = reverseList(secondHalf);
+    struct ListNode* firstHalf = head;
+    while (secondHalf != NULL) {
+        struct ListNode* temp1 = firstHalf->next;
+        struct ListNode* temp2 = secondHalf->next;
+
+        firstHalf->next = secondHalf;
+        secondHalf->next = temp1;
+
+        firstHalf = temp1;
+        secondHalf = temp2;
+    }
+}
