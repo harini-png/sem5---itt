@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+
+int findBound(int* nums, int numsSize, int target, int isFirst) {
+    int left = 0;
+    int right = numsSize - 1;
+    int bound = -1;
+
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+
+        if (nums[mid] == target) {
+            bound = mid; // Record the index
+            if (isFirst) {
+                right = mid - 1; // Keep searching left for the first position
+            } else {
+                left = mid + 1;  // Keep searching right for the last position
+            }
+        } else if (nums[mid] < target) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    return bound;
+}
+
+int* searchRange(int* nums, int numsSize, int target, int* returnSize) {
+  
+    int* result = (int*)malloc(2 * sizeof(int));
+    *returnSize = 2;
+
+    if (numsSize == 0) {
+        result[0] = -1;
+        result[1] = -1;
+        return result;
+    }
+
+   
+    result[0] = findBound(nums, numsSize, target, 1);
+    result[1] = findBound(nums, numsSize, target, 0);
+
+    return result;
+}
