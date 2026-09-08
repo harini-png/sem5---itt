@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+char** findRepeatedDnaSequences(char* s, int* returnSize) {
+    *returnSize = 0;
+    int len = strlen(s);
+    if (len < 10) return NULL;
+
+    // Map characters 'A', 'C', 'G', 'T' to 2-bit integers
+    int map[26] = {0}; // Fixed array initialization size
+    map['A' - 'A'] = 0;
+    map['C' - 'A'] = 1;
+    map['G' - 'A'] = 2;
+    map['T' - 'A'] = 3;
+
+    // There are 4^10 = 1,048,576 possible combinations for a 10-letter DNA sequence.
+    unsigned char* freq = (unsigned char*)calloc(1048576, sizeof(unsigned char));
+    
+    // Allocate maximum possible size for the results array
+    char** result = (char**)malloc((len - 9) * sizeof(char*));
+    
+    int hash = 0;
+    // Calculate the hash for the first 9 characters
+    for (int i = 0; i < 9; i++) {
+        hash = (hash << 2) | map[s[i] - 'A'];
+    }
+
+    // Slide the 10-letter window across the entire sequence
+    for (int i = 9; i < len; i++) {
+        // Shift left by 2 bits, add the new character, and mask out older bits to keep it 20-bit
+        hash = ((hash << 2) | map[s[i] - 'A']) & 0xFFFFF;
+
+        if (freq[hash] == 1) {
+            // FIXED: Cast to (char*) instead of (char**)
+            result[*returnSize] = (char*)malloc(11 * sizeof(char));
+            strncpy(result[*returnSize], &s[i - 9], 10);
+            result[*returnSize][10] = '\0'; // FIXED: Access the string index directly
+            (*returnSize)++;
+            freq[hash] = 2; // Mark as added to prevent duplicate entries in output
+        } else if (freq[hash] == 0) {
+            freq[hash] = 1; // Mark as seen once
+        }
+    }
+
+    free(freq);
+    return result;
+}
