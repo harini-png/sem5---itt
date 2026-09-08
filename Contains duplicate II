@@ -1,0 +1,87 @@
+#include <stdbool.h>
+#include <stdlib.h>
+
+// Definition for a hash node
+typedef struct HashNode {
+    int key;
+    int index;
+    struct HashNode* next;
+} HashNode;
+
+// Fast C Hash Table Implementation
+typedef struct {
+    int size;
+    HashNode** buckets;
+} HashTable;
+
+HashTable* createTable(int size) {
+    HashTable* table = (HashTable*)malloc(sizeof(HashTable));
+    table->size = size;
+    table->buckets = (HashNode**)calloc(size, sizeof(HashNode*));
+    return table;
+}
+
+int hashFunction(int key, int size) {
+    // Handle negative values safely using absolute value or casting to unsigned
+    unsigned int ukey = (unsigned int)key;
+    return ukey % size;
+}
+
+// Inserts or updates an element, returning the previous index if found
+int putOrGetIndex(HashTable* table, int key, int currentIndex) {
+    int bucket = hashFunction(key, table->size);
+    HashNode* curr = table->buckets[bucket];
+    
+    // Check if key already exists
+    while (curr != NULL) {
+        if (curr->key == key) {
+            int oldIndex = curr->index;
+            curr->index = currentIndex; // Update to latest index
+            return oldIndex;
+        }
+        curr = curr->next;
+    }
+    
+    // Key doesn't exist, create a new node
+    HashNode* newNode = (HashNode*)malloc(sizeof(HashNode));
+    newNode->key = key;
+    newNode->index = currentIndex;
+    newNode->next = table->buckets[bucket];
+    table->buckets[bucket] = newNode;
+    
+    return -1; // Flag indicating it's a fresh element
+}
+
+void freeTable(HashTable* table) {
+    for (int i = 0; i < table->size; i++) {
+        HashNode* curr = table->buckets[i];
+        while (curr != NULL) {
+            HashNode* temp = curr;
+            curr = curr->next;
+            free(temp);
+        }
+    }
+    free(table->buckets);
+    free(table);
+}
+
+bool containsNearbyDuplicate(int* nums, int numsSize, int k) {
+    if (numsSize <= 1 || k == 0) return false;
+    
+    // Set hash table size proportional to array constraint sizes
+    int tableSize = numsSize < 50000 ? numsSize : 50000;
+    HashTable* table = createTable(tableSize);
+    
+    for (int i = 0; i < numsSize; i++) {
+        int prevIndex = putOrGetIndex(table, nums[i], i);
+        
+        // If a duplicate is found, check if it fits the distance criteria
+        if (prevIndex != -1 && (i - prevIndex) <= k) {
+            freeTable(table);
+            return true;
+        }
+    }
+    
+    freeTable(table);
+    return false;
+}
