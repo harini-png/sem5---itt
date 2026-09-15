@@ -1,0 +1,35 @@
+#include <stdlib.h>
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+int* inorderTraversal(struct TreeNode* root, int* returnSize) {
+    *returnSize = 0;
+    
+    // Allocate space for the result. Max nodes is 100 based on constraints.
+    int* result = (int*)malloc(100 * sizeof(int));
+    if (!result) return NULL;
+    
+    // Create an explicit stack array to store node pointers (max 100 nodes)
+    struct TreeNode* stack[100];
+    int top = -1;
+    
+    struct TreeNode* current = root;
+    
+    while (current != NULL || top >= 0) {
+        // 1. Travel as far left as possible
+        while (current != NULL) {
+            stack[++top] = current;
+            current = current->left;
+        }
+        
+        // 2. Process the top node from the stack
+        current = stack[top--];
+        result[(*returnSize)++] = current->val;
+        
+        // 3. Move to the right subtree
+        current = current->right;
+    }
+    
+    return result;
+}
