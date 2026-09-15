@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+// Helper function to compare two sub-arrays starting at positions p1 and p2
+bool isGreater(int* nums1, int m, int p1, int* nums2, int n, int p2) {
+    while (p1 < m && p2 < n) {
+        if (nums1[p1] > nums2[p2]) return true;
+        if (nums1[p1] < nums2[p2]) return false;
+        p1++;
+        p2++;
+    }
+    return p1 < m;
+}
+
+// Subproblem 1: Find the max subsequence of length 'len' from a single array
+int* maxSubarray(int* nums, int size, int len) {
+    int* res = (int*)malloc(len * sizeof(int));
+    int top = 0; 
+    int drop = size - len; 
+    
+    for (int i = 0; i < size; i++) {
+        while (top > 0 && res[top - 1] < nums[i] && drop > 0) {
+            top--;
+            drop--;
+        }
+        if (top < len) {
+            res[top++] = nums[i];
+        } else {
+            drop--; 
+        }
+    }
+    return res;
+}
+
+// Subproblem 2: Merge two max subsequences to get the largest possible merged array
+int* merge(int* sub1, int len1, int* sub2, int len2, int k) {
+    int* res = (int*)malloc(k * sizeof(int));
+    int p1 = 0, p2 = 0, i = 0;
+    
+    while (i < k) {
+        if (isGreater(sub1, len1, p1, sub2, len2, p2)) {
+            res[i++] = sub1[p1++];
+        } else {
+            res[i++] = sub2[p2++];
+        }
+    }
+    return res;
+}
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+int* maxNumber(int* nums1, int nums1Size, int* nums2, int nums2Size, int k, int* returnSize) {
+    *returnSize = k;
+    int* maxResult = (int*)calloc(k, sizeof(int));
+    
+    int start = (k - nums2Size > 0) ? k - nums2Size : 0;
+    int end = (nums1Size < k) ? nums1Size : k;
+    
+    for (int i = start; i <= end; i++) {
+        int len1 = i;
+        int len2 = k - i;
+        
+        int* sub1 = maxSubarray(nums1, nums1Size, len1);
+        int* sub2 = maxSubarray(nums2, nums2Size, len2);
+        
+        int* candidate = merge(sub1, len1, sub2, len2, k);
+        
+        if (isGreater(candidate, k, 0, maxResult, k, 0)) {
+            memcpy(maxResult, candidate, k * sizeof(int));
+        }
+        
+        free(sub1);
+        free(sub2);
+        free(candidate);
+    }
+    
+    return maxResult;
+}
