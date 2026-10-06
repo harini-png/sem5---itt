@@ -1,0 +1,53 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Helper function to sort the array
+int compare(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
+}
+
+// Backtracking function
+void backtrack(int *nums, int numsSize, int *path, int *visited, int depth, int **result, int *returnSize, int *returnColumnSizes) {
+    if (depth == numsSize) {
+        result[*returnSize] = (int *)malloc(numsSize * sizeof(int));
+        for (int i = 0; i < numsSize; i++) {
+            result[*returnSize][i] = path[i];
+        }
+        returnColumnSizes[*returnSize] = numsSize;
+        (*returnSize)++;
+        return;
+    }
+    
+    for (int i = 0; i < numsSize; i++) {
+        // Skip if already visited
+        if (visited[i]) continue;
+        
+        // Skip duplicates: if previous identical element was not used, skip this one
+        if (i > 0 && nums[i] == nums[i - 1] && !visited[i - 1]) continue;
+        
+        visited[i] = 1;
+        path[depth] = nums[i];
+        backtrack(nums, numsSize, path, visited, depth + 1, result, returnSize, returnColumnSizes);
+        visited[i] = 0; // backtrack
+    }
+}
+
+int** permuteUnique(int* nums, int numsSize, int* returnSize, int** returnColumnSizes) {
+    // Sort to handle duplicates easily
+    qsort(nums, numsSize, sizeof(int), compare);
+    
+    // Max possible permutations for 8 elements is 8! = 40320
+    int maxPerms = 40320;
+    int **result = (int **)malloc(maxPerms * sizeof(int *));
+    *returnColumnSizes = (int *)malloc(maxPerms * sizeof(int));
+    *returnSize = 0;
+    
+    int *path = (int *)malloc(numsSize * sizeof(int));
+    int *visited = (int *)calloc(numsSize, sizeof(int));
+    
+    backtrack(nums, numsSize, path, visited, 0, result, returnSize, *returnColumnSizes);
+    
+    free(path);
+    free(visited);
+    return result;
+}
