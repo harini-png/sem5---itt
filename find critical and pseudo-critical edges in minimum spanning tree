@@ -1,0 +1,139 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Structure to represent an Edge with weight, endpoints, and original index
+typedef struct {
+    int weight;
+    int u;
+    int v;
+    int id;
+} Edge;
+
+// Comparison function for sorting edges by weight
+int compareEdges(const void* a, const void* b) {
+    Edge* edge1 = (Edge*)a;
+    Edge* edge2 = (Edge*)b;
+    return edge1->weight - edge2->weight;
+}
+
+// UnionFind structure
+typedef struct {
+    int* parents;
+    int weight;
+    int edgeCount;
+} UnionFind;
+
+// Initialize UnionFind
+UnionFind* createUnionFind(int n) {
+    UnionFind* uf = (UnionFind*)malloc(sizeof(UnionFind));
+    uf->parents = (int*)malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        uf->parents[i] = i;
+    }
+    uf->weight = 0;
+    uf->edgeCount = 0;
+    return uf;
+}
+
+// Find with path compression
+int ufFind(UnionFind* uf, int x) {
+    if (x != uf->parents[x]) {
+        uf->parents[x] = ufFind(uf, uf->parents[x]);
+    }
+    return uf->parents[x];
+}
+
+// Union operation
+void ufUnion(UnionFind* uf, int x, int y, int w) {
+    int r1 = ufFind(uf, x);
+    int r2 = ufFind(uf, y);
+    if (r1 != r2) {
+        uf->parents[r2] = r1;
+        uf->weight += w;
+        uf->edgeCount++;
+    }
+}
+
+// Free UnionFind memory
+void freeUnionFind(UnionFind* uf) {
+    free(uf->parents);
+    free(uf);
+}
+
+/**
+ * Return an array of arrays of size *returnSize.
+ * The sizes of the arrays are returned as *returnColumnSizes array.
+ * Note: Both returned array and *columnSizes array must be statically allocated or as shown below.
+ */
+int** findCriticalAndPseudoCriticalEdges(int n, int** edges_raw, int edgesSize, int* edgesColSize, int* returnSize, int** returnColumnSizes) {
+    int m = edgesSize;
+    Edge* edges = (Edge*)malloc(m * sizeof(Edge));
+    for (int i = 0; i < m; i++) {
+        edges[i].weight = edges_raw[i][2];
+        edges[i].u = edges_raw[i][0];
+        edges[i].v = edges_raw[i][1];
+        edges[i].id = i;
+    }
+
+    qsort(edges, m, sizeof(Edge), compareEdges);
+
+    // Initial MST weight calculation
+    UnionFind* uf1 = createUnionFind(n);
+    for (int i = 0; i < m; i++) {
+        ufUnion(uf1, edges[i].u, edges[i].v, edges[i].weight);
+    }
+    int minWeight = uf1->weight;
+    freeUnionFind(uf1);
+
+    int* tempCe = (int*)malloc(m * sizeof(int));
+    int* tempPce = (int*)malloc(m * sizeof(int));
+    int cCount = 0, pcCount = 0;
+
+    for (int i = 0; i < m; i++) {
+        // Test removing edge i
+        UnionFind* uf2 = createUnionFind(n);
+        for (int j = 0; j < m; j++) {
+            if (edges[i].id == edges[j].id) continue;
+            ufUnion(uf2, edges[j].u, edges[j].v, edges[j].weight);
+        }
+
+        if (uf2->weight > minWeight || uf2->edgeCount < n - 1) {
+            tempCe[cCount++] = edges[i].id;
+            freeUnionFind(uf2);
+        } else {
+            freeUnionFind(uf2);
+
+            // Test forcing edge i first
+            UnionFind* uf3 = createUnionFind(n);
+            ufUnion(uf3, edges[i].u, edges[i].v, edges[i].weight);
+            for (int j = 0; j < m; j++) {
+                ufUnion(uf3, edges[j].u, edges[j].v, edges[j].weight);
+            }
+
+            if (uf3->weight == minWeight) {
+                tempPce[pcCount++] = edges[i].id;
+            }
+            freeUnionFind(uf3);
+        }
+    }
+
+    // Leetcode requires returning an int** containing 2 rows
+    int** result = (int**)malloc(2 * sizeof(int*));
+    result[0] = (int*)malloc(cCount * sizeof(int));
+    result[1] = (int*)malloc(pcCount * sizeof(int));
+
+    for (int i = 0; i < cCount; i++) result[0][i] = tempCe[i];
+    for (int i = 0; i < pcCount; i++) result[1][i] = tempPce[i];
+
+    // Allocate return column sizes array
+    *returnColumnSizes = (int*)malloc(2 * sizeof(int));
+    (*returnColumnSizes)[0] = cCount;
+    (*returnColumnSizes)[1] = pcCount;
+    *returnSize = 2;
+
+    free(tempCe);
+    free(tempPce);
+    free(edges);
+
+    return result;
+}
