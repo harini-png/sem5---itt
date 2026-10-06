@@ -1,0 +1,77 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+// Parent array to store parent of every node
+int par[1001];
+
+// Edge structure to store weight and the two nodes
+typedef struct {
+    int weight;
+    int u;
+    int v;
+} Edge;
+
+// Find function with path compression
+int find(int a) {
+    if (par[a] < 0)
+        return a;
+    return par[a] = find(par[a]);
+}
+
+// Union function to merge two sets
+void Union(int a, int b) {
+    par[a] = b;
+}
+
+// Comparison function for qsort to sort edges by weight
+int compareEdges(const void* a, const void* b) {
+    Edge* edgeA = (Edge*)a;
+    Edge* edgeB = (Edge*)b;
+    return edgeA->weight - edgeB->weight;
+}
+
+int minCostConnectPoints(int** points, int pointsSize, int* pointsColSize) {
+    int n = pointsSize;
+    
+    // Initially all are alone, so everyone is "-1"
+    for (int i = 0; i < n; i++) {
+        par[i] = -1;
+    }
+    
+    // Maximum number of edges is n * (n - 1) / 2
+    int maxEdges = (n * (n - 1)) / 2;
+    Edge* adj = (Edge*)malloc(maxEdges * sizeof(Edge));
+    
+    int edgeCount = 0;
+    // Generating graph with weights (Manhattan distance)
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            int weight = abs(points[i][0] - points[j][0]) + 
+                         abs(points[i][1] - points[j][1]);
+            adj[edgeCount].weight = weight;
+            adj[edgeCount].u = i;
+            adj[edgeCount].v = j;
+            edgeCount++;
+        }
+    }
+    
+    // Sort edges on the basis of their edge weight
+    qsort(adj, edgeCount, sizeof(Edge), compareEdges);
+    
+    int sum = 0; // Initially define sum as zero
+    
+    // For each edge we travel
+    for (int i = 0; i < edgeCount; i++) {
+        int a = find(adj[i].u); // First node parent
+        int b = find(adj[i].v); // Second node parent
+        
+        if (a != b) { // If both parents are not same then add weight
+            sum += adj[i].weight;
+            Union(a, b); // Now merge them
+        }
+    }
+    
+    free(adj); // Free dynamically allocated memory
+    return sum; // Finally return sum
+}
